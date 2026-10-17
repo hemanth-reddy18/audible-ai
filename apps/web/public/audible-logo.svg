@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <defs>
+    <linearGradient id="audibleGradLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="50%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+  </defs>
+  <!-- Icon -->
+  <g transform="translate(10, 8)">
+    <circle cx="32" cy="32" r="30" stroke="url(#audibleGradLight)" stroke-width="2" opacity="0.6" stroke-dasharray="6 4"/>
+    <g stroke="url(#audibleGradLight)" stroke-width="3.5" stroke-linecap="round">
+      <line x1="16" y1="26" x2="16" y2="38" opacity="0.8" />
+      <line x1="24" y1="20" x2="24" y2="44" opacity="0.95" />
+      <line x1="32" y1="12" x2="32" y2="52" opacity="1" />
+      <line x1="40" y1="20" x2="40" y2="44" opacity="0.95" />
+      <line x1="48" y1="26" x2="48" y2="38" opacity="0.8" />
+    </g>
+  </g>
+  <!-- Wordmark -->
+  <text x="88" y="47" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif" font-size="28" font-weight="700" letter-spacing="0.08em" fill="#0f172a">AUDIBLE</text>
+  <!-- Subtitle badge -->
+  <rect x="238" y="27" width="28" height="18" rx="4" fill="url(#audibleGradLight)" opacity="0.15"/>
+  <rect x="238" y="27" width="28" height="18" rx="4" stroke="url(#audibleGradLight)" stroke-width="1" opacity="0.5"/>
+  <text x="244" y="40" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="10" font-weight="700" fill="#0284c7" letter-spacing="0.05em">AI</text>
+</svg>

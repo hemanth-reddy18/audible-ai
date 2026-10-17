@@ -1,0 +1,92 @@
+/* Audible Liquid Glass Design System
+   Inspired by macOS / iOS visionOS liquid-glass aesthetics:
+   - High refractive specular border gradients
+   - Deep backdrop-filter gaussian blurs
+   - Soft luminescent radial drop shadows
+   - Neutral monochrome base with glowing cyber acoustic accents
+*/
+
+:root {
+  --glass-bg-light: rgba(255, 255, 255, 0.72);
+  --glass-border-light: rgba(0, 0, 0, 0.08);
+  --glass-specular-light: rgba(255, 255, 255, 0.9);
+  --glass-shadow-light: 0 10px 30px -5px rgba(0, 0, 0, 0.06), 0 0 1px 1px rgba(0, 0, 0, 0.04);
+
+  --glass-bg-dark: rgba(18, 18, 22, 0.65);
+  --glass-border-dark: rgba(255, 255, 255, 0.09);
+  --glass-specular-dark: rgba(255, 255, 255, 0.16);
+  --glass-shadow-dark: 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.08);
+
+  --audible-glow-cyan: #38bdf8;
+  --audible-glow-indigo: #818cf8;
+  --audible-glow-purple: #c084fc;
+}
+
+.liquid-glass {
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--glass-border-light);
+  box-shadow: var(--glass-shadow-light);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .liquid-glass {
+  background: var(--glass-bg-dark);
+  border: 1px solid var(--glass-border-dark);
+  box-shadow: var(--glass-shadow-dark);
+}
+
+.liquid-glass-card {
+  position: relative;
+  border-radius: 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.liquid-glass-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.liquid-glass-card:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4), 0 0 20px rgba(56, 189, 248, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Audio wave pulse */
+@keyframes acoustic-pulse {
+  0%, 100% {
+    transform: scaleY(0.3);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.acoustic-bar {
+  animation: acoustic-pulse 1.2s ease-in-out infinite;
+  transform-origin: bottom;
+}
