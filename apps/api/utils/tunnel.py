@@ -11,6 +11,9 @@ from loguru import logger
 class TunnelURLProvider:
     """Provider for getting tunnel URLs from cloudflared service."""
 
+    _tunnel_checked: bool = False
+    _cached_urls: Optional[tuple[str, str]] = None
+
     @classmethod
     async def get_tunnel_urls(cls) -> tuple[str, str]:
         """
@@ -22,15 +25,30 @@ class TunnelURLProvider:
         Raises:
             ValueError: If no tunnel URL can be determined
         """
+        if cls._tunnel_checked:
+            if cls._cached_urls:
+                return cls._cached_urls
+            raise ValueError("No tunnel URL available")
+
+        # In local dev environment without explicit tunnel enabled, fail fast immediately
+        import os
+        enable_tunnel = os.getenv("ENABLE_TUNNEL", "false").lower() == "true"
+        if not enable_tunnel:
+            cls._tunnel_checked = True
+            cls._cached_urls = None
+            raise ValueError("Tunnel resolution skipped: ENABLE_TUNNEL is not true")
 
         try:
-            # Try to get URL from cloudflared metrics
             urls = await cls._get_cloudflared_urls()
+            cls._tunnel_checked = True
             if urls:
+                cls._cached_urls = urls
                 return urls
         except Exception as e:
+            cls._tunnel_checked = True
             logger.warning(f"Failed to get tunnel URL from cloudflared: {e}")
 
+        cls._tunnel_checked = True
         raise ValueError(
             "No tunnel URL available. Please set BACKEND_API_ENDPOINT environment "
             "variable or ensure cloudflared service is running."
@@ -45,13 +63,11 @@ class TunnelURLProvider:
             Optional[tuple[str, str]]: (https_url, wss_url) with full protocols, or None if not found
         """
         try:
-            # Try to connect to cloudflared metrics endpoint
-            # The service name in docker-compose is 'cloudflared'
             metrics_url = "http://cloudflared:2000/metrics"
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    metrics_url, timeout=aiohttp.ClientTimeout(total=5)
+                    metrics_url, timeout=aiohttp.ClientTimeout(total=0.5, connect=0.3)
                 ) as response:
                     if response.status != 200:
                         logger.warning(

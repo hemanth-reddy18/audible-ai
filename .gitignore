@@ -70,3 +70,13 @@ Thumbs.db
 _dograh_upstream/
 tmp/
 temp/
+
+# Android Companion Build Artifacts
+.gradle/
+**/build/
+local.properties
+*.apk
+
+# Machine Learning Models (>100MB exceeds GitHub limits)
+models/
+*.onnx

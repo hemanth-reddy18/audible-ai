@@ -137,12 +137,14 @@ SmallestTTSSettings = _safe_import("pipecat.services.smallest.tts", "SmallestTTS
 SonioxContextObject = _safe_import("pipecat.services.soniox.stt", "SonioxContextObject")
 SonioxSTTService = _safe_import("pipecat.services.soniox.stt", "SonioxSTTService")
 SonioxSTTSettings = _safe_import("pipecat.services.soniox.stt", "SonioxSTTSettings")
-SpeachesLLMService = _safe_import("pipecat.services.speaches.llm", "SpeachesLLMService")
-SpeachesLLMSettings = _safe_import("pipecat.services.speaches.llm", "SpeachesLLMSettings")
-SpeachesSTTService = _safe_import("pipecat.services.speaches.stt", "SpeachesSTTService")
-SpeachesSTTSettings = _safe_import("pipecat.services.speaches.stt", "SpeachesSTTSettings")
-SpeachesTTSService = _safe_import("pipecat.services.speaches.tts", "SpeachesTTSService")
-SpeachesTTSSettings = _safe_import("pipecat.services.speaches.tts", "SpeachesTTSSettings")
+from api.services.pipecat.speaches_services import (
+    SpeachesLLMService,
+    SpeachesLLMSettings,
+    SpeachesSTTService,
+    SpeachesSTTSettings,
+    SpeachesTTSService,
+    SpeachesTTSSettings,
+)
 SpeechmaticsSTTService = _safe_import("pipecat.services.speechmatics.stt", "SpeechmaticsSTTService")
 SpeechmaticsSTTSettings = _safe_import("pipecat.services.speechmatics.stt", "SpeechmaticsSTTSettings")
 from pipecat.services.tts_service import TextAggregationMode

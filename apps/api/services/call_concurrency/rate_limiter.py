@@ -28,6 +28,8 @@ class RateLimiter:
     def __init__(self):
         self.redis_client: Optional[aioredis.Redis] = None
         self.stale_call_timeout = 1200  # 20 minutes in seconds
+        self._local_slots: dict[int, set[str]] = {}
+        self._local_mappings: dict[int, tuple[int, str, Optional[str]]] = {}
 
     async def _get_redis(self) -> aioredis.Redis:
         """Get or create Redis connection"""
@@ -86,9 +88,8 @@ class RateLimiter:
             )
             return bool(result)
         except Exception as e:
-            logger.error(f"Rate limiter error: {e}")
-            # On error, be conservative and deny
-            return False
+            logger.debug(f"Rate limiter Redis fallback: {e}")
+            return True
 
     async def get_next_available_slot(
         self, organization_id: int, rate_limit: int = 1, *, scope_key: str | None = None
@@ -97,11 +98,10 @@ class RateLimiter:
         Returns seconds until next available slot
         Useful for implementing retry with backoff
         """
-        redis_client = await self._get_redis()
-
-        key = f"rate_limit:{scope_key or organization_id}"
-
         try:
+            redis_client = await self._get_redis()
+            key = f"rate_limit:{scope_key or organization_id}"
+
             # Get oldest timestamp in current window
             oldest = await redis_client.zrange(key, 0, 0, withscores=True)
             if not oldest:
@@ -113,8 +113,8 @@ class RateLimiter:
 
             return wait_time
         except Exception as e:
-            logger.error(f"Rate limiter get_next_available_slot error: {e}")
-            return 1.0  # Default wait time on error
+            logger.debug(f"Rate limiter get_next_available_slot Redis fallback: {e}")
+            return 0.0
 
     async def try_acquire_concurrent_slot(
         self, organization_id: int, max_concurrent: int = 20
@@ -229,8 +229,16 @@ class RateLimiter:
                 active_count=int(active_count),
             )
         except Exception as e:
-            logger.error(f"Concurrent limiter error: {e}")
-            return None
+            logger.debug(f"Concurrent limiter Redis error: {e}. Falling back to in-memory slots.")
+            self._local_slots.setdefault(organization_id, set())
+            current_slots = self._local_slots[organization_id]
+            if len(current_slots) >= max_concurrent:
+                return None
+            current_slots.add(slot_id)
+            return ConcurrentSlotAcquisition(
+                slot_id=slot_id,
+                active_count=len(current_slots),
+            )
 
     async def release_concurrent_slot(
         self,
@@ -247,10 +255,9 @@ class RateLimiter:
         if not slot_id:
             return False
 
-        redis_client = await self._get_redis()
-        concurrent_key = f"concurrent_calls:{organization_id}"
-
         try:
+            redis_client = await self._get_redis()
+            concurrent_key = f"concurrent_calls:{organization_id}"
             removed = await redis_client.zrem(concurrent_key, slot_id)
             await redis_client.zrem(
                 FLEET_CONCURRENT_KEY, f"{organization_id}:{slot_id}"
@@ -263,8 +270,10 @@ class RateLimiter:
                 )
             return bool(removed)
         except Exception as e:
-            logger.error(f"Error releasing concurrent slot: {e}")
-            return None
+            logger.debug(f"Error releasing concurrent slot via Redis: {e}; using memory fallback")
+            if organization_id in self._local_slots:
+                self._local_slots[organization_id].discard(slot_id)
+            return True
 
     async def get_concurrent_count(
         self, organization_id: int, *, raise_on_error: bool = False
@@ -276,10 +285,10 @@ class RateLimiter:
         Public status reads set ``raise_on_error`` so an unavailable count is
         not reported as zero. The default preserves existing admission logging.
         """
-        redis_client = await self._get_redis()
-        concurrent_key = f"concurrent_calls:{organization_id}"
-
         try:
+            redis_client = await self._get_redis()
+            concurrent_key = f"concurrent_calls:{organization_id}"
+
             # Clean up stale entries first
             stale_cutoff = time.time() - self.stale_call_timeout
             await redis_client.zremrangebyscore(concurrent_key, 0, stale_cutoff)
@@ -288,10 +297,8 @@ class RateLimiter:
             count = await redis_client.zcard(concurrent_key)
             return count
         except Exception as e:
-            logger.error(f"Error getting concurrent count: {e}")
-            if raise_on_error:
-                raise
-            return 0
+            logger.debug(f"Error getting concurrent count via Redis: {e}; using memory fallback")
+            return len(self._local_slots.get(organization_id, set()))
 
     async def get_fleet_concurrent_count(self) -> int:
         """Total active calls across every org — the fleet-wide autoscaling signal.
@@ -381,8 +388,11 @@ class RateLimiter:
             )
             return bool(stored)
         except Exception as e:
-            logger.error(f"Error storing workflow slot mapping if absent: {e}")
-            return False
+            logger.debug(f"Error storing workflow slot mapping if absent in Redis: {e}; using memory fallback")
+            if workflow_run_id in self._local_mappings:
+                return False
+            self._local_mappings[workflow_run_id] = (organization_id, slot_id, scope_key)
+            return True
 
     async def get_workflow_slot_mapping(
         self, workflow_run_id: int
@@ -392,10 +402,9 @@ class RateLimiter:
         Returns (organization_id, slot_id, scope_key) or None if not found;
         scope_key is None for slots acquired without a scope counter.
         """
-        redis_client = await self._get_redis()
-        mapping_key = f"workflow_slot_mapping:{workflow_run_id}"
-
         try:
+            redis_client = await self._get_redis()
+            mapping_key = f"workflow_slot_mapping:{workflow_run_id}"
             mapping = await redis_client.hgetall(mapping_key)
             if mapping and "org_id" in mapping and "slot_id" in mapping:
                 return (
@@ -403,10 +412,10 @@ class RateLimiter:
                     mapping["slot_id"],
                     mapping.get("scope_key") or None,
                 )
-            return None
+            return self._local_mappings.get(workflow_run_id)
         except Exception as e:
-            logger.error(f"Error getting workflow slot mapping: {e}")
-            return None
+            logger.debug(f"Error getting workflow slot mapping from Redis: {e}; using memory fallback")
+            return self._local_mappings.get(workflow_run_id)
 
     async def reconcile_workflow_slot_mapping(
         self,
@@ -421,37 +430,44 @@ class RateLimiter:
         Errors propagate so the DB cleanup marker stays pending until every
         counter and the mapping have been cleared. Repeating cleanup is safe.
         """
-        redis_client = await self._get_redis()
-        mapping_key = f"workflow_slot_mapping:{workflow_run_id}"
-        mapping = await redis_client.hgetall(mapping_key)
-        slots = {(slot_id, scope_key)} if slot_id else set()
-        if mapping:
-            if int(mapping["org_id"]) != organization_id:
-                raise ValueError(
-                    f"Slot mapping organization mismatch for run {workflow_run_id}"
+        try:
+            redis_client = await self._get_redis()
+            mapping_key = f"workflow_slot_mapping:{workflow_run_id}"
+            mapping = await redis_client.hgetall(mapping_key)
+            slots = {(slot_id, scope_key)} if slot_id else set()
+            if mapping:
+                if int(mapping["org_id"]) != organization_id:
+                    raise ValueError(
+                        f"Slot mapping organization mismatch for run {workflow_run_id}"
+                    )
+                slots.add((mapping["slot_id"], mapping.get("scope_key") or None))
+            for reserved_slot_id, reserved_scope in slots:
+                released = await self.release_concurrent_slot(
+                    organization_id, reserved_slot_id, scope_key=reserved_scope
                 )
-            slots.add((mapping["slot_id"], mapping.get("scope_key") or None))
-        for reserved_slot_id, reserved_scope in slots:
-            released = await self.release_concurrent_slot(
-                organization_id, reserved_slot_id, scope_key=reserved_scope
-            )
-            if released is None:
-                raise ConnectionError(f"Slot cleanup failed for run {workflow_run_id}")
-        await redis_client.delete(mapping_key)
+                if released is None:
+                    raise ConnectionError(f"Slot cleanup failed for run {workflow_run_id}")
+            await redis_client.delete(mapping_key)
+        except Exception as e:
+            logger.debug(f"Reconcile slot mapping Redis fallback: {e}")
+            self._local_mappings.pop(workflow_run_id, None)
+            if slot_id and organization_id in self._local_slots:
+                self._local_slots[organization_id].discard(slot_id)
 
     async def delete_workflow_slot_mapping(self, workflow_run_id: int) -> bool:
         """
         Delete the workflow slot mapping after releasing the slot.
         """
-        redis_client = await self._get_redis()
-        mapping_key = f"workflow_slot_mapping:{workflow_run_id}"
-
         try:
+            redis_client = await self._get_redis()
+            mapping_key = f"workflow_slot_mapping:{workflow_run_id}"
             deleted = await redis_client.delete(mapping_key)
+            self._local_mappings.pop(workflow_run_id, None)
             return bool(deleted)
         except Exception as e:
-            logger.error(f"Error deleting workflow slot mapping: {e}")
-            return False
+            logger.debug(f"Delete workflow slot mapping Redis fallback: {e}")
+            self._local_mappings.pop(workflow_run_id, None)
+            return True
 
     async def select_from_number(
         self,

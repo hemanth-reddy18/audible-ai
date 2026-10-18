@@ -590,10 +590,13 @@ def register_event_handlers(
 
         # Combined task: runs integrations (including QA), then calculates
         # cost (so QA token usage is captured in usage_info)
-        await enqueue_job(
-            FunctionNames.PROCESS_WORKFLOW_COMPLETION,
-            workflow_run_id,
-        )
+        try:
+            await enqueue_job(
+                FunctionNames.PROCESS_WORKFLOW_COMPLETION,
+                workflow_run_id,
+            )
+        except Exception as e:
+            logger.debug(f"Could not enqueue workflow completion job: {e}")
 
     # Return the buffer so it can be passed to other handlers
     return in_memory_audio_buffers

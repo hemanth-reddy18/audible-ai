@@ -1,3 +1,4 @@
+import pytest
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -28,3 +29,66 @@ def test_create_speaches_stt_service_uses_http_base_url():
     assert kwargs["api_key"] == "none"
     assert kwargs["settings"].model == "Systran/faster-whisper-small"
     assert kwargs["settings"].language == "tr"
+
+
+def test_create_speaches_tts_service():
+    from api.services.pipecat.service_factory import create_tts_service
+
+    user_config = SimpleNamespace(
+        tts=SimpleNamespace(
+            provider=ServiceProviders.SPEACHES.value,
+            base_url="http://localhost:11434/v1",
+            api_key=None,
+            model="tts-1",
+            voice="alloy",
+            speed=1.0,
+        )
+    )
+    audio_config = SimpleNamespace(transport_in_sample_rate=16000)
+
+    with patch(
+        "api.services.pipecat.service_factory.SpeachesTTSService"
+    ) as mock_service:
+        create_tts_service(user_config, audio_config)
+
+    assert mock_service.call_count == 1
+    kwargs = mock_service.call_args.kwargs
+    assert kwargs["base_url"] == "http://localhost:11434/v1"
+    assert kwargs["api_key"] == "none"
+    assert kwargs["settings"].model == "tts-1"
+    assert kwargs["settings"].voice == "alloy"
+
+
+def test_create_speaches_llm_service():
+    from api.services.pipecat.service_factory import create_llm_service_from_provider
+
+    service = create_llm_service_from_provider(
+        provider=ServiceProviders.SPEACHES.value,
+        model="llama3.2:1b",
+        base_url="http://localhost:11434/v1",
+        api_key=None,
+    )
+    assert service is not None
+    assert service._settings.model == "llama3.2:1b"
+
+
+@pytest.mark.asyncio
+async def test_speaches_tts_sapi_synthesis():
+    from api.services.pipecat.speaches_services import (
+        SpeachesTTSService,
+        SpeachesTTSSettings,
+    )
+    from pipecat.frames.frames import TTSAudioRawFrame
+
+    tts = SpeachesTTSService(
+        base_url="http://localhost:11434/v1",
+        settings=SpeachesTTSSettings(model="tts-1", voice="alloy"),
+        sample_rate=16000,
+    )
+
+    frames = [f async for f in tts.run_tts("Audible voice synthesis test.", "test-ctx")]
+    assert len(frames) > 0
+    assert all(isinstance(f, TTSAudioRawFrame) for f in frames)
+    assert frames[0].sample_rate == 16000
+    assert frames[0].num_channels == 1
+

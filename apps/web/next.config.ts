@@ -8,7 +8,24 @@ const nextConfig: NextConfig = {
     serverSourceMaps: true,
   },
   async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:8000";
     return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+      {
+        source: "/docs",
+        destination: `${backendUrl}/docs`,
+      },
+      {
+        source: "/api/v1/docs",
+        destination: `${backendUrl}/docs`,
+      },
+      {
+        source: "/openapi.json",
+        destination: `${backendUrl}/api/v1/openapi.json`,
+      },
       {
         source: "/ingest/static/:path*",
         destination: "https://us-assets.i.posthog.com/static/:path*",
@@ -31,8 +48,8 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-  org: "dograh",
-  project: "javascript-nextjs",
+  org: "audible",
+  project: "audible-web",
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,

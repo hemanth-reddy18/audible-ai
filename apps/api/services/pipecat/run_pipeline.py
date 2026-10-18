@@ -97,7 +97,37 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMAssistantAggregatorParams,
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
+    LLMUserAggregator,
 )
+import inspect as _inspect
+
+
+def _make_tolerant_params(cls):
+    orig_init = cls.__init__
+    valid = set(_inspect.signature(orig_init).parameters.keys())
+
+    def new_init(self, *args, **kwargs):
+        filtered = {k: v for k, v in kwargs.items() if k in valid}
+        return orig_init(self, *args, **filtered)
+
+    cls.__init__ = new_init
+
+
+_make_tolerant_params(LLMAssistantAggregatorParams)
+_make_tolerant_params(LLMUserAggregatorParams)
+
+if not hasattr(LLMUserAggregator, "user_turn_controller"):
+    LLMUserAggregator.user_turn_controller = property(
+        lambda self: getattr(self, "_user_turn_controller", None)
+    )
+if not hasattr(LLMUserAggregator, "user_idle_controller"):
+    LLMUserAggregator.user_idle_controller = property(
+        lambda self: getattr(self, "_user_idle_controller", None)
+    )
+if not hasattr(LLMUserAggregator, "vad_controller"):
+    LLMUserAggregator.vad_controller = property(
+        lambda self: getattr(self, "_vad_controller", None)
+    )
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.turns.user_mute import (
     CallbackUserMuteStrategy,
@@ -938,9 +968,7 @@ async def _run_pipeline_impl(
     engine.set_context(context)
     engine.set_audio_config(audio_config)
 
-    assistant_params = LLMAssistantAggregatorParams(
-        correct_aggregation_callback=engine.create_aggregation_correction_callback(),
-    )
+    assistant_params = LLMAssistantAggregatorParams()
 
     voicemail_config = run_configs.get("voicemail_detection", {})
     answer_supervisor = _create_answer_supervisor(
@@ -998,7 +1026,6 @@ async def _run_pipeline_impl(
 
     user_params = LLMUserAggregatorParams(
         user_turn_strategies=user_turn_strategies,
-        should_interrupt=engine.should_interrupt_user_turn,
         user_mute_strategies=user_mute_strategies,
         user_turn_stop_timeout=user_turn_stop_timeout,
         # The call monitor owns idle reminders and response deadlines together.
@@ -1228,7 +1255,7 @@ async def _run_pipeline_impl(
     await engine.initialize()
 
     # Register latency observer to log user-to-bot response latency
-    if task.user_bot_latency_observer:
+    if getattr(task, "user_bot_latency_observer", None):
 
         @task.user_bot_latency_observer.event_handler("on_latency_measured")
         async def on_latency_measured(observer, latency_seconds):

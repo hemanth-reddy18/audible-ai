@@ -24,6 +24,7 @@ from api.enums import OrganizationConfigurationKey
 from api.errors.mps import MPSUnavailableError
 from api.services.configuration.model_connections import (
     dograh_model_configuration_spec,
+    local_speaches_model_configuration_spec,
 )
 from api.services.mps_billing import ensure_hosted_mps_billing_account_v2
 from api.services.mps_service_key_client import mps_service_key_client
@@ -31,6 +32,8 @@ from api.services.mps_service_key_client import mps_service_key_client
 MANAGED_SERVICE_KEY_NAME = "Default Dograh Model Service Key"
 MANAGED_CONNECTION_NAME = "Dograh"
 DEFAULT_CONFIGURATION_NAME = "Organization default"
+LOCAL_CONNECTION_NAME = "Local Models (Ollama)"
+LOCAL_CONFIGURATION_NAME = "Audible Local Default"
 
 # A holder that dies mid-provisioning leaves its lease pending. This bounds how
 # long the organization waits before another request is allowed to take over.
@@ -163,28 +166,47 @@ async def _bootstrap_organization(
                 exc_info=True,
             )
 
-        service_key = await mint_managed_service_key(
-            organization_id, created_by=created_by
-        )
-        # Persist before provisioning SIP: the service key is already issued and
-        # minting is not idempotent, so the shorter the window in which a crash
-        # can lose it, the fewer orphaned keys a retry leaves behind.
-        await db_client.bootstrap_default_model_configuration(
-            organization_id,
-            connection_name=MANAGED_CONNECTION_NAME,
-            provider="dograh",
-            credentials={"api_key": service_key},
-            configuration_name=DEFAULT_CONFIGURATION_NAME,
-            configuration_for=dograh_model_configuration_spec,
-        )
+        try:
+            service_key = await mint_managed_service_key(
+                organization_id, created_by=created_by
+            )
+            # Persist before provisioning SIP: the service key is already issued and
+            # minting is not idempotent, so the shorter the window in which a crash
+            # can lose it, the fewer orphaned keys a retry leaves behind.
+            await db_client.bootstrap_default_model_configuration(
+                organization_id,
+                connection_name=MANAGED_CONNECTION_NAME,
+                provider="dograh",
+                credentials={"api_key": service_key},
+                configuration_name=DEFAULT_CONFIGURATION_NAME,
+                configuration_for=dograh_model_configuration_spec,
+            )
+        except Exception as e:
+            logger.info(
+                "MPS service key unavailable ({}); bootstrapping local Ollama / Speaches configuration for organization {}",
+                e,
+                organization_id,
+            )
+            await db_client.bootstrap_default_model_configuration(
+                organization_id,
+                connection_name=LOCAL_CONNECTION_NAME,
+                provider="speaches",
+                credentials={},
+                connection_settings={"base_url": "http://localhost:11434/v1"},
+                configuration_name=LOCAL_CONFIGURATION_NAME,
+                configuration_for=local_speaches_model_configuration_spec,
+            )
 
     if sip_provisioned:
         return True
 
-    return await provision_managed_sip_connectivity(
+    sip_ok = await provision_managed_sip_connectivity(
         organization_id,
         created_by=created_by,
     )
+    if AUTH_PROVIDER == "local":
+        return True
+    return sip_ok
 
 
 async def mint_managed_service_key(organization_id: int, *, created_by: str) -> str:

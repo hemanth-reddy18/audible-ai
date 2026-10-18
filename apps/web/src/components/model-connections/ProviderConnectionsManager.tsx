@@ -47,7 +47,7 @@ export default function ProviderConnectionsManager({ docsUrl }: { docsUrl?: stri
         description={<>Connect provider accounts, like OpenAI, Google Gemini, ElevenLabs using API Keys, then use them in your <Link href="/model-configurations" className="underline">named model configurations</Link>.
             {docsUrl && <> <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline">Learn more<ExternalLink className="h-3 w-3" /></a></>}</>}
     >
-        <PageSection title="Provider Connections" description="Add multiple accounts from any provider, including Dograh."
+        <PageSection title="Provider Connections" description="Add and manage accounts for local and cloud AI providers."
             actions={<Button asChild><Link href="/provider-connections/new"><Plus className="h-4 w-4" />Add Provider</Link></Button>}>
             {loading && !catalog && <div className="grid gap-3"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
             {(error || actionError) && <div role="alert" className="flex items-center justify-between gap-3 rounded-md border border-destructive/40 p-4 text-sm text-destructive">

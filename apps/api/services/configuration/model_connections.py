@@ -262,6 +262,30 @@ def dograh_model_configuration_spec(connection_uuid) -> dict:
     }
 
 
+def local_speaches_model_configuration_spec(connection_uuid) -> dict:
+    """A pipeline specification running local models (Ollama / Speaches)."""
+    return {
+        "version": 3,
+        "mode": "pipeline",
+        "llm": {
+            "provider_connection_uuid": str(connection_uuid),
+            "settings": {"model": "llama3.2:1b"},
+        },
+        "stt": {
+            "provider_connection_uuid": str(connection_uuid),
+            "settings": {
+                "model": "Systran/faster-distil-whisper-small.en",
+                "language": "en",
+            },
+        },
+        "tts": {
+            "provider_connection_uuid": str(connection_uuid),
+            "settings": {"model": "kokoro", "voice": "af_heart"},
+        },
+    }
+
+
+
 async def get_default_model_configuration(organization_id):
     row = await db_client.get_configuration(organization_id, DEFAULT_KEY)
     if row is None or not row.value:

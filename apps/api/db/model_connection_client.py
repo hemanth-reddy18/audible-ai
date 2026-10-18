@@ -278,6 +278,7 @@ class ModelConnectionClient(BaseDBClient):
         credentials,
         configuration_name,
         configuration_for,
+        connection_settings=None,
     ):
         """Create one connection, one configuration on it, and make it the default.
 
@@ -292,7 +293,7 @@ class ModelConnectionClient(BaseDBClient):
                 name=connection_name,
                 provider=provider,
                 credentials=deepcopy(credentials),
-                connection_settings={},
+                connection_settings=deepcopy(connection_settings) if connection_settings else {},
             )
             session.add(connection)
             await session.flush()

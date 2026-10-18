@@ -553,6 +553,64 @@ async def create_workflow(
     }
 
 
+def _generate_local_workflow(call_type: str, use_case: str, activity_description: str) -> dict:
+    clean_use_case = use_case.strip() or "General Assistant"
+    clean_activity = activity_description.strip() or "Assist the user with their inquiries."
+    clean_type = call_type.strip().title() if call_type else "Inbound"
+
+    greeting = f"Hello! Thank you for calling. I am your assistant for {clean_use_case}. How can I assist you today?"
+    system_prompt = (
+        f"You are an intelligent, friendly, and helpful voice assistant for: {clean_use_case}.\n"
+        f"Your mission and instructions: {clean_activity}\n"
+        "Keep your responses spoken, natural, concise (1-2 sentences), warm, and polite."
+    )
+
+    return {
+        "name": f"{clean_use_case} - {clean_type}",
+        "workflow_definition": {
+            "nodes": [
+                {
+                    "id": "start",
+                    "type": "startCall",
+                    "position": {"x": 250, "y": 100},
+                    "data": {
+                        "is_start": True,
+                        "name": f"{clean_use_case[:20]} Concierge",
+                        "allow_interrupt": True,
+                        "add_global_prompt": False,
+                        "greeting_type": "text",
+                        "greeting": greeting,
+                        "prompt": system_prompt,
+                    },
+                },
+                {
+                    "id": "end",
+                    "type": "endCall",
+                    "position": {"x": 250, "y": 350},
+                    "data": {
+                        "is_end": True,
+                        "name": "End Call",
+                        "allow_interrupt": False,
+                        "add_global_prompt": False,
+                        "prompt": "Politely say goodbye, thank the caller, and conclude the conversation.",
+                    },
+                },
+            ],
+            "edges": [
+                {
+                    "id": "start-to-end",
+                    "source": "start",
+                    "target": "end",
+                    "data": {
+                        "label": "Conclude Conversation",
+                        "condition": "When the user says goodbye or finishes their inquiry.",
+                    },
+                }
+            ],
+        },
+    }
+
+
 @router.post("/create/template")
 async def create_workflow_from_template(
     request: CreateWorkflowTemplateRequest,
@@ -562,7 +620,7 @@ async def create_workflow_from_template(
     Create a new workflow from a natural language template request.
 
     This endpoint:
-    1. Uses mps_service_key_client to call MPS workflow API
+    1. Uses mps_service_key_client to call MPS workflow API or local fallback
     2. Passes organization ID (authenticated mode) or created_by (OSS mode)
     3. Creates the workflow in the database
 
@@ -572,28 +630,35 @@ async def create_workflow_from_template(
 
     Returns:
         The created workflow
-
-    Raises:
-        HTTPException: If MPS API call fails
     """
     try:
-        # Call MPS API to generate workflow using the client
-        if DEPLOYMENT_MODE == "oss":
-            workflow_data = await mps_service_key_client.call_workflow_api(
-                call_type=request.call_type.upper(),
-                use_case=request.use_case,
-                activity_description=request.activity_description,
-                created_by=str(user.provider_id),
-            )
-        else:
-            if not user.selected_organization_id:
-                raise HTTPException(status_code=400, detail="No organization selected")
+        # Call MPS API to generate workflow using the client, falling back to local generator
+        try:
+            if DEPLOYMENT_MODE == "oss":
+                workflow_data = await mps_service_key_client.call_workflow_api(
+                    call_type=request.call_type.upper(),
+                    use_case=request.use_case,
+                    activity_description=request.activity_description,
+                    created_by=str(user.provider_id),
+                )
+            else:
+                if not user.selected_organization_id:
+                    raise HTTPException(status_code=400, detail="No organization selected")
 
-            workflow_data = await mps_service_key_client.call_workflow_api(
-                call_type=request.call_type.upper(),
+                workflow_data = await mps_service_key_client.call_workflow_api(
+                    call_type=request.call_type.upper(),
+                    use_case=request.use_case,
+                    activity_description=request.activity_description,
+                    organization_id=user.selected_organization_id,
+                )
+        except Exception as e:
+            logger.warning(
+                f"MPS cloud unavailable ({e}); generating local workflow definition"
+            )
+            workflow_data = _generate_local_workflow(
+                call_type=request.call_type,
                 use_case=request.use_case,
                 activity_description=request.activity_description,
-                organization_id=user.selected_organization_id,
             )
 
         # Create the workflow in our database

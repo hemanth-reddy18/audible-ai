@@ -114,7 +114,7 @@ class OrganizationModel(Base):
         Enum("monthly", "annual", name="quota_type"),
         nullable=False,
         default="monthly",
-        server_default=text("'monthly'::quota_type"),
+        server_default=text("'monthly'"),
         comment="Deprecated. MPS owns quota and credit ledger state.",
         info={"deprecated": True},
     )
@@ -175,7 +175,7 @@ class APIKeyModel(Base):
         Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
     )
     name = Column(String, nullable=False)
-    key_hash = Column(String, nullable=False, unique=True, index=True)
+    key_hash = Column(String, nullable=False, unique=True)
     key_prefix = Column(String, nullable=False)  # Store first 8 chars for display
     is_active = Column(Boolean, default=True, nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -419,7 +419,7 @@ class TelephonyPhoneNumberModel(Base):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     extra_metadata = Column(
-        JSON, nullable=False, default=dict, server_default=text("'{}'::json")
+        JSON, nullable=False, default=dict, server_default=text("'{}'")
     )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
@@ -508,15 +508,15 @@ class WorkflowDefinitionModel(Base):
         JSON,
         nullable=False,
         default=dict,
-        server_default=text("'{}'::json"),
+        server_default=text("'{}'"),
     )
 
     # Full behavioral snapshot (moved from WorkflowModel to enable versioning)
     workflow_configurations = Column(
-        JSON, nullable=False, default=dict, server_default=text("'{}'::json")
+        JSON, nullable=False, default=dict, server_default=text("'{}'")
     )
     template_context_variables = Column(
-        JSON, nullable=False, default=dict, server_default=text("'{}'::json")
+        JSON, nullable=False, default=dict, server_default=text("'{}'")
     )
 
     # Table constraints and indexes — unique hash constraint removed (no more dedup)
@@ -587,13 +587,13 @@ class WorkflowModel(Base):
         Enum(*[status.value for status in WorkflowStatus], name="workflow_status"),
         nullable=False,
         default=WorkflowStatus.ACTIVE.value,
-        server_default=text("'active'::workflow_status"),
+        server_default=text("'active'"),
     )
     workflow_definition = Column(JSON, nullable=False, default=dict)
     template_context_variables = Column(JSON, nullable=False, default=dict)
     call_disposition_codes = Column(JSON, nullable=False, default=dict)
     workflow_configurations = Column(
-        JSON, nullable=False, default=dict, server_default=text("'{}'::json")
+        JSON, nullable=False, default=dict, server_default=text("'{}'")
     )
     runs = relationship("WorkflowRunModel", back_populates="workflow")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
@@ -670,26 +670,26 @@ class WorkflowRunModel(Base):
         Enum(*[call_type.value for call_type in CallType], name="workflow_call_type"),
         nullable=False,
         default=CallType.OUTBOUND.value,
-        server_default=text("'outbound'::workflow_call_type"),
+        server_default=text("'outbound'"),
     )
     state = Column(
         Enum(*[state.value for state in WorkflowRunState], name="workflow_run_state"),
         nullable=False,
         default=WorkflowRunState.INITIALIZED.value,
-        server_default=text("'initialized'::workflow_run_state"),
+        server_default=text("'initialized'"),
     )
     is_completed = Column(Boolean, default=False)
     recording_url = Column(String, nullable=True)
     transcript_url = Column(String, nullable=True)
     extra = Column(
-        JSON, nullable=False, default=dict, server_default=text("'{}'::json")
+        JSON, nullable=False, default=dict, server_default=text("'{}'")
     )
     # Store storage backend as string enum (s3, minio)
     storage_backend = Column(
         Enum("s3", "minio", name="storage_backend"),
         nullable=False,
         default="s3",
-        server_default=text("'s3'::storage_backend"),
+        server_default=text("'s3'"),
     )
     usage_info = Column(JSON, nullable=False, default=dict)
     cost_info = Column(JSON, nullable=False, default=dict)
@@ -697,7 +697,7 @@ class WorkflowRunModel(Base):
     model_configuration_snapshot = Column(JSON, nullable=True)
     initial_context = Column(JSON, nullable=False, default=dict)
     gathered_context = Column(JSON, nullable=False, default=dict)
-    logs = Column(JSON, nullable=False, default=dict, server_default=text("'{}'::json"))
+    logs = Column(JSON, nullable=False, default=dict, server_default=text("'{}'"))
     annotations = Column(JSON, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=True)
@@ -749,13 +749,13 @@ class WorkflowRunTextSessionModel(Base):
         JSON,
         nullable=False,
         default=dict,
-        server_default=text("'{}'::json"),
+        server_default=text("'{}'"),
     )
     checkpoint = Column(
         JSON,
         nullable=False,
         default=dict,
-        server_default=text("'{}'::json"),
+        server_default=text("'{}'"),
     )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
@@ -868,7 +868,7 @@ class CampaignModel(Base):
         nullable=False,
         default=DEFAULT_CAMPAIGN_RETRY_CONFIG,
         server_default=text(
-            '\'{"enabled": true, "max_retries": 2, "retry_on_busy": true, "retry_on_no_answer": true, "retry_on_voicemail": true, "retry_delay_seconds": 120}\'::jsonb'
+            '\'{"enabled": true, "max_retries": 2, "retry_on_busy": true, "retry_on_no_answer": true, "retry_on_voicemail": true, "retry_delay_seconds": 120}\''
         ),
     )
 
@@ -876,7 +876,7 @@ class CampaignModel(Base):
     last_batch_scheduled_at = Column(DateTime(timezone=True), nullable=True)
     last_activity_at = Column(DateTime(timezone=True), nullable=True)
     orchestrator_metadata = Column(
-        JSON, nullable=False, default=dict, server_default=text("'{}'::json")
+        JSON, nullable=False, default=dict, server_default=text("'{}'")
     )
 
     # Append-only timestamped log entries for state transitions, failures,
@@ -886,7 +886,7 @@ class CampaignModel(Base):
         JSON,
         nullable=False,
         default=list,
-        server_default=text("'[]'::json"),
+        server_default=text("'[]'"),
     )
 
     # Timestamps
@@ -1073,7 +1073,7 @@ class AgentTriggerModel(Base):
         Enum(*[state.value for state in TriggerState], name="trigger_state"),
         nullable=False,
         default=TriggerState.ACTIVE.value,
-        server_default=text("'active'::trigger_state"),
+        server_default=text("'active'"),
     )
 
     # Audit
@@ -1310,7 +1310,7 @@ class ToolModel(Base):
         ),
         nullable=False,
         default=ToolStatus.ACTIVE.value,
-        server_default=text("'active'::tool_status"),
+        server_default=text("'active'"),
     )
 
     # The tool definition (JSONB) - contains schema_version for compatibility
@@ -1392,7 +1392,7 @@ class KnowledgeBaseDocumentModel(Base):
         ),
         nullable=False,
         default="pending",
-        server_default=text("'pending'::document_processing_status"),
+        server_default=text("'pending'"),
     )
     processing_error = Column(Text, nullable=True)
 
@@ -1447,7 +1447,7 @@ class WorkflowRecordingModel(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # Descriptive ID used in prompts (unique per organization)
-    recording_id = Column(String(64), nullable=False, index=True)
+    recording_id = Column(String(64), nullable=False)
 
     # Scoping
     workflow_id = Column(
@@ -1471,12 +1471,12 @@ class WorkflowRecordingModel(Base):
         Enum("s3", "minio", name="recording_storage_backend"),
         nullable=False,
         default="s3",
-        server_default=text("'s3'::recording_storage_backend"),
+        server_default=text("'s3'"),
     )
 
     # Extra metadata (file_size_bytes, duration_seconds, original_filename, mime_type, etc.)
     recording_metadata = Column(
-        JSON, nullable=False, default=dict, server_default=text("'{}'::json")
+        JSON, nullable=False, default=dict, server_default=text("'{}'")
     )
 
     # Audit

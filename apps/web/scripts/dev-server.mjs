@@ -34,20 +34,57 @@ function pinnedPort() {
     return matches.length > 0 ? matches[matches.length - 1][1] : null;
 }
 
-const port = process.env.UI_PORT || pinnedPort();
+const publicPort = process.env.UI_PORT || pinnedPort() || '3010';
+const internalPort = process.env.INTERNAL_WEB_PORT || '3011';
+const gatewayScript = join(uiRoot, 'scripts', 'audible-gateway.mjs');
 
-// Spawn Next's JS entry through node rather than node_modules/.bin/next: the
-// bin shim is a .cmd on Windows and would need a shell to invoke.
-const child = spawn(
+// Spawn Next's JS entry on internal port
+const nextChild = spawn(
     process.execPath,
     [
         join(uiRoot, 'node_modules', 'next', 'dist', 'bin', 'next'),
         'dev',
         '--turbopack',
-        ...(port ? ['-p', port] : []),
+        '-p', internalPort,
         ...process.argv.slice(2),
     ],
-    { cwd: uiRoot, stdio: 'inherit' }
+    {
+        cwd: uiRoot,
+        stdio: 'inherit',
+        env: { ...process.env, UI_PORT: internalPort, PORT: internalPort },
+    }
 );
 
-child.on('exit', (code, signal) => process.exit(signal ? 1 : (code ?? 0)));
+// Spawn Audible AI Gateway on the public port (3010)
+const gatewayChild = spawn(
+    process.execPath,
+    [gatewayScript],
+    {
+        cwd: uiRoot,
+        stdio: 'inherit',
+        env: {
+            ...process.env,
+            UI_PORT: publicPort,
+            INTERNAL_WEB_PORT: internalPort,
+            API_PORT: process.env.API_PORT || '8000',
+        },
+    }
+);
+
+function cleanup() {
+    try { nextChild.kill(); } catch {}
+    try { gatewayChild.kill(); } catch {}
+}
+
+process.on('SIGINT', () => { cleanup(); process.exit(0); });
+process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+
+nextChild.on('exit', (code, signal) => {
+    cleanup();
+    process.exit(signal ? 1 : (code ?? 0));
+});
+
+gatewayChild.on('exit', (code, signal) => {
+    cleanup();
+    process.exit(signal ? 1 : (code ?? 0));
+});

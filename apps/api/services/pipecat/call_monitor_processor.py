@@ -191,9 +191,9 @@ class CallMonitorProcessor(FrameProcessor):
         self._arm_idle()
 
     def _idle_eligible(self) -> bool:
-        user_active = self._user_turn_active or (
-            self.user_aggregator is not None
-            and self.user_aggregator.user_turn_controller.has_active_user_turn
+        user_turn_ctrl = getattr(self.user_aggregator, "user_turn_controller", None) if self.user_aggregator else None
+        user_active = self._user_turn_active or bool(
+            user_turn_ctrl and getattr(user_turn_ctrl, "has_active_user_turn", False)
         )
         return bool(
             self._active

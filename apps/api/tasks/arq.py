@@ -40,15 +40,15 @@ if use_ssl:
 # short outage (a service restart on the Redis host) from ever reaching arq.
 # The budget below is roughly a minute of exponential backoff, which covers a
 # restart while still surfacing a genuinely unreachable Redis.
-_REDIS_RETRY = Retry(ExponentialBackoff(cap=10, base=0.1), retries=12)
+_REDIS_RETRY = Retry(ExponentialBackoff(cap=1, base=0.1), retries=1)
 
 REDIS_SETTINGS = RedisSettings(
     host=parsed_url.hostname or "localhost",
     port=parsed_url.port or 6379,
     password=parsed_url.password,
-    conn_timeout=10,
+    conn_timeout=2,
     retry=_REDIS_RETRY,
-    retry_on_timeout=True,
+    retry_on_timeout=False,
     retry_on_error=[RedisConnectionError, RedisTimeoutError],
     ssl=use_ssl,
     ssl_ca_certs=None if not use_ssl else None,
@@ -150,7 +150,12 @@ async def get_arq_redis() -> ArqRedis:
 
 
 async def enqueue_job(function_name: FunctionNames, *args, **kwargs):
-    redis = await get_arq_redis()
-    # kwargs forwards ARQ job options (e.g. _job_id, _defer_by) used for
-    # deterministic, backed-off webhook delivery retries.
-    return await redis.enqueue_job(function_name, *args, **kwargs)
+    try:
+        redis = await get_arq_redis()
+        # kwargs forwards ARQ job options (e.g. _job_id, _defer_by) used for
+        # deterministic, backed-off webhook delivery retries.
+        return await redis.enqueue_job(function_name, *args, **kwargs)
+    except Exception as e:
+        from loguru import logger
+        logger.debug(f"Skipping background job {function_name} (Redis offline in local environment): {e}")
+        return None

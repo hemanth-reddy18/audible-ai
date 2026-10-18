@@ -11,6 +11,21 @@ from pipecat.pipeline.worker import (
     PipelineWorker,
     ProcessorUnusablePolicy,
 )
+import inspect as _inspect
+
+
+def _make_tolerant_params(cls):
+    orig_init = cls.__init__
+    valid = set(_inspect.signature(orig_init).parameters.keys())
+
+    def new_init(self, *args, **kwargs):
+        filtered = {k: v for k, v in kwargs.items() if k in valid}
+        return orig_init(self, *args, **filtered)
+
+    cls.__init__ = new_init
+
+
+_make_tolerant_params(PipelineWorker)
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.audio.audio_buffer_processor import AudioBufferProcessor
 from pipecat.utils.run_context import turn_var

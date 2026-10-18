@@ -14,8 +14,8 @@ export default function OverviewPage() {
 
     return (
         <PageLayout
-            title={isOSSMode ? "Welcome to Dograh" : `Welcome${user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}!`}
-            description={isOSSMode ? "Open source alternative to Vapi. Help us support the project by giving us a star on GitHub." : "Get started with building voice AI workflows"}
+            title={isOSSMode ? "Welcome to Audible" : `Welcome${user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}!`}
+            description={isOSSMode ? "Autonomous voice agent platform for local and enterprise voice intelligence." : "Get started with building voice AI workflows"}
             actions={isOSSMode && <GitHubStarBadge label="Star us on GitHub" showCount source="overview_page" />}>
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -57,18 +57,18 @@ export default function OverviewPage() {
                 <CardHeader>
                     <CardTitle>Resources</CardTitle>
                     <CardDescription>
-                        Get help and learn more about Dograh
+                        Get help and learn more about Audible
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap gap-4">
                         <Button asChild variant="outline">
                             <a
-                                href="https://docs.dograh.com"
+                                href="/docs"
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
-                                Documentation
+                                API Documentation
                             </a>
                         </Button>
                         <Button asChild variant="outline">

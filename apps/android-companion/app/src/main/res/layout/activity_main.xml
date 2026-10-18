@@ -1,0 +1,585 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUDIBLE AI"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/accent"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Galaxy Note8 Jio Telephony Diagnostics"
+                android:textSize="13sp"
+                android:textColor="@color/text_muted" />
+        </LinearLayout>
+
+        <!-- 1. Connection & Backend Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WINDOWS &amp; BACKEND BRIDGE"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent" />
+
+                <TextView
+                    android:id="@+id/tvDeviceDetails"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Device: Samsung SM-N950F | Android 14"
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvBackendStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Backend: Connecting to Windows (127.0.0.1:8000)..."
+                    android:textColor="@color/warning"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnSyncBackend"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/primary"
+                    android:text="Sync with Windows Audible AI"
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 2. Cellular & SIM Diagnostics Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CELLULAR &amp; SIM DIAGNOSTICS"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent" />
+
+                <TextView
+                    android:id="@+id/tvSimStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="SIM: Checking SIM status..."
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvCellularService"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Radio: LTE Registered | Data: Ready"
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvImsVoLteStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="VoLTE / IMS: Checking..."
+                    android:textColor="@color/danger"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvVoWiFiStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Wi-Fi Calling (VoWiFi): Checking..."
+                    android:textColor="@color/warning"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 3. Wi-Fi Connection Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WI-FI CONNECTION STATE"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent" />
+
+                <TextView
+                    android:id="@+id/tvWifiState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Wi-Fi: Checking..."
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvWifiDetails"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="IP: Checking..."
+                    android:textColor="@color/text_muted"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 4. Real-Time Call Monitor Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="INCOMING CALL &amp; TELECOM MONITOR"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent" />
+
+                <TextView
+                    android:id="@+id/tvCallState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Call State: IDLE"
+                    android:textColor="@color/text_light"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvIncomingCallDetected"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Incoming Call Detected: No"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvCallerNumber"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Caller: None"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp" />
+
+                <!-- AI Auto Answer Section -->
+                <com.google.android.material.divider.MaterialDivider
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="AI Auto Answer"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_light" />
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switchAutoAnswer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textOn=""
+                        android:textOff=""
+                        app:showText="false"
+                        android:checked="false" />
+                </LinearLayout>
+
+                <RadioGroup
+                    android:id="@+id/rgAnswerPolicy"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+
+                    <RadioButton
+                        android:id="@+id/rbAllCalls"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="All Calls"
+                        android:textColor="@color/text_light"
+                        android:textSize="11sp"
+                        android:checked="true" />
+
+                    <RadioButton
+                        android:id="@+id/rbApprovedOnly"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:text="Approved Only"
+                        android:textColor="@color/text_light"
+                        android:textSize="11sp" />
+                </RadioGroup>
+
+                <EditText
+                    android:id="@+id/etApprovedNumbers"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:layout_marginTop="4dp"
+                    android:hint="Comma-separated numbers (e.g. 9876543210, +91...)"
+                    android:textColorHint="@color/text_muted"
+                    android:textColor="@color/text_light"
+                    android:textSize="11sp"
+                    android:background="@drawable/edittext_border"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:visibility="gone" />
+
+                <com.google.android.material.divider.MaterialDivider
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnAnswerCall"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="@color/success"
+                        android:text="Answer Call"
+                        android:enabled="false"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnEndCall"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:backgroundTint="@color/danger"
+                        android:text="End Call"
+                        android:enabled="false"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/etDialNumber"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:hint="Enter phone number"
+                        android:textColorHint="@color/text_muted"
+                        android:textColor="@color/text_light"
+                        android:inputType="phone"
+                        android:textSize="12sp"
+                        android:background="@drawable/edittext_border"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp" />
+
+                    <Button
+                        android:id="@+id/btnDialOut"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:backgroundTint="@color/primary"
+                        android:text="Call"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 4b. Voice Connection & Supermarket Audio Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="VOICE CONNECTION &amp; SUPERMARKET RECEPTIONIST"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent" />
+
+                <TextView
+                    android:id="@+id/tvAudioRouteStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Audio Route: Initializing..."
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnTestVoicePhrase"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="@color/accent"
+                        android:text="Speak Test Phrase (Phase 3)"
+                        android:textColor="@color/black"
+                        android:textStyle="bold"
+                        android:textSize="10sp" />
+
+                    <Button
+                        android:id="@+id/btnToggleSpeaker"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:backgroundTint="@color/primary"
+                        android:text="Speakerphone: ON"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvLiveTranscript"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Live Speech: Waiting for call..."
+                    android:textColor="@color/success"
+                    android:textStyle="italic"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvSupermarketOrderSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Order List: Empty"
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 5. Android Settings Shortcuts Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ANDROID TELEPHONY SETTINGS SHORTCUTS"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Official Android system settings screens for SIM, Network, and Calling configuration:"
+                    android:textColor="@color/text_muted"
+                    android:textSize="11sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnOpenMobileSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="@color/primary_dark"
+                        android:text="Mobile Network"
+                        android:textSize="10sp" />
+
+                    <Button
+                        android:id="@+id/btnOpenWifiSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="@color/primary_dark"
+                        android:text="Wi-Fi Settings"
+                        android:textSize="10sp" />
+
+                    <Button
+                        android:id="@+id/btnOpenPhoneAccounts"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:backgroundTint="@color/primary_dark"
+                        android:text="Calling Accounts"
+                        android:textSize="10sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 6. Permissions Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            app:cardBackgroundColor="@color/card_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PERMISSIONS STATUS"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent" />
+
+                <TextView
+                    android:id="@+id/tvPermissionsStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Checking required permissions..."
+                    android:textColor="@color/text_muted"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btnRequestPermissions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/primary_dark"
+                    android:text="Grant Phone &amp; Audio Permissions"
+                    android:textColor="@color/text_light"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>

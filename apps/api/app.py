@@ -28,6 +28,7 @@ if sentry_sdk and SENTRY_DSN and (
     print(f"Sentry initialized in environment: {ENVIRONMENT}")
 
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, Request
@@ -59,35 +60,61 @@ mcp_app = mcp.http_app(path="/", stateless_http=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with mcp_app.lifespan(app):
-        # warmup arq pool
-        await get_arq_redis()
+        # Auto-initialize database schema if using SQLite
+        try:
+            from api.db import db_client
+            from api.db.models import Base
+            async with db_client.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database schema verified/created successfully.")
+        except Exception as e:
+            logger.warning(f"Database schema initialization: {e}")
+
+        # warmup arq pool (optional in offline dev mode)
+        try:
+            await asyncio.wait_for(get_arq_redis(), timeout=1.0)
+        except Exception as e:
+            logger.warning(f"Arq Redis warmup skipped (offline dev mode): {e}")
 
         # Pre-register all org-specific Langfuse exporters so they're ready
         # before any pipeline runs, without per-call DB lookups.
-        await load_all_org_langfuse_credentials()
+        try:
+            await load_all_org_langfuse_credentials()
+        except Exception as e:
+            logger.warning(f"Langfuse credentials preload skipped: {e}")
 
         # Start cross-worker sync manager so config changes propagate to all workers
-        sync_manager = WorkerSyncManager(REDIS_URL)
-        sync_manager.register(
-            WorkerSyncEventType.LANGFUSE_CREDENTIALS, handle_langfuse_sync
-        )
-        await sync_manager.start()
-        set_worker_sync_manager(sync_manager)
+        sync_manager = None
+        try:
+            sync_manager = WorkerSyncManager(REDIS_URL)
+            sync_manager.register(
+                WorkerSyncEventType.LANGFUSE_CREDENTIALS, handle_langfuse_sync
+            )
+            await asyncio.wait_for(sync_manager.start(), timeout=1.0)
+            set_worker_sync_manager(sync_manager)
+        except Exception as e:
+            logger.warning(f"WorkerSyncManager skipped: {e}")
 
         from api.services.observability import loop_exceptions, loop_lag, metrics
         from api.services.observability.call_events import (
             delivery as call_event_delivery,
         )
 
-        call_event_delivery.start()
+        try:
+            call_event_delivery.start()
+        except Exception as e:
+            logger.warning(f"Call event delivery start skipped: {e}")
 
         # Event-loop lag gauge — per-pod saturation signal read off
         # /health/active-calls during autoscaling load tests.
-        metrics.start()
-        loop_lag.start()
-        # Routes exceptions that escape tasks and timer callbacks; demotes one
-        # known aioice teardown race and leaves everything else at ERROR.
-        loop_exceptions.install()
+        try:
+            metrics.start()
+            loop_lag.start()
+            # Routes exceptions that escape tasks and timer callbacks; demotes one
+            # known aioice teardown race and leaves everything else at ERROR.
+            loop_exceptions.install()
+        except Exception as e:
+            logger.warning(f"Observability loop monitors skipped: {e}")
 
         try:
             yield  # Run app
@@ -97,16 +124,31 @@ async def lifespan(app: FastAPI):
                 finish_streaming_text_chat_turns,
             )
 
-            await finish_streaming_text_chat_turns()
-            await call_event_delivery.shutdown()
             try:
-                await sync_manager.stop()
-            finally:
+                await finish_streaming_text_chat_turns()
+            except Exception:
+                pass
+            try:
+                await call_event_delivery.shutdown()
+            except Exception:
+                pass
+            if sync_manager is not None:
                 try:
-                    await close_speech_cache()
-                finally:
-                    await loop_lag.stop()
-                    metrics.stop()
+                    await sync_manager.stop()
+                except Exception:
+                    pass
+            try:
+                await close_speech_cache()
+            except Exception:
+                pass
+            try:
+                await loop_lag.stop()
+            except Exception:
+                pass
+            try:
+                metrics.stop()
+            except Exception:
+                pass
 
 
 app = FastAPI(
