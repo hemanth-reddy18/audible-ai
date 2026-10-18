@@ -132,9 +132,20 @@ class MainActivity : AppCompatActivity() {
 
                         override fun onDone(utteranceId: String?) {
                             isSpeaking = false
-                            if (utteranceId?.startsWith("farewell") == true) {
+                            val parts = utteranceId?.split("#")
+                            val action = parts?.getOrNull(0) ?: ""
+                            val cmdId = parts?.getOrNull(1) ?: ""
+
+                            // Acknowledge after speech has completely finished playing
+                            if (cmdId.isNotEmpty()) {
                                 lifecycleScope.launch {
-                                    delay(1000)
+                                    apiClient.ackCommand(cmdId, "COMPLETED")
+                                }
+                            }
+
+                            if (action == "farewell") {
+                                lifecycleScope.launch {
+                                    delay(1500)
                                     callMonitor.endCall()
                                 }
                             }
@@ -142,6 +153,13 @@ class MainActivity : AppCompatActivity() {
 
                         override fun onError(utteranceId: String?) {
                             isSpeaking = false
+                            val parts = utteranceId?.split("#")
+                            val cmdId = parts?.getOrNull(1) ?: ""
+                            if (cmdId.isNotEmpty()) {
+                                lifecycleScope.launch {
+                                    apiClient.ackCommand(cmdId, "FAILED", "TTS synthesis error")
+                                }
+                            }
                         }
                     })
                     isTtsReady = true
@@ -200,17 +218,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun speakToCaller(text: String, isFarewell: Boolean = false) {
+    private fun speakToCaller(text: String, isFarewell: Boolean = false, commandId: String = "") {
         runOnUiThread {
             binding.tvLiveTranscript.text = "Speaking to Caller: \"$text\""
         }
         if (isTtsReady) {
-            val utteranceId = if (isFarewell) "farewell_${System.currentTimeMillis()}" else "utterance_${System.currentTimeMillis()}"
+            val prefix = if (isFarewell) "farewell" else "speak"
+            val utteranceId = "$prefix#$commandId#${System.currentTimeMillis()}"
             val params = Bundle().apply {
                 putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
                 putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
             }
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
+            // Use QUEUE_ADD so consecutive valid responses are never truncated by QUEUE_FLUSH
+            tts?.speak(text, TextToSpeech.QUEUE_ADD, params, utteranceId)
         } else {
             Toast.makeText(this, "TTS not ready yet", Toast.LENGTH_SHORT).show()
         }
@@ -505,12 +525,20 @@ class MainActivity : AppCompatActivity() {
                     // Start background command polling loop during active call for this specific callId
                     callCommandJob?.cancel()
                     callCommandJob = lifecycleScope.launch {
+                        val processedCommandIds = mutableSetOf<String>()
                         while (isActive && callMonitor.currentCallState == "OFFHOOK") {
                             val res = apiClient.getPendingCommands(callId)
                             res.onSuccess { cmds ->
                                 for (cmd in cmds) {
                                     val cmdId = cmd.optString("command_id")
                                     val action = cmd.optString("action")
+                                    if (cmdId.isNotEmpty() && processedCommandIds.contains(cmdId)) {
+                                        continue
+                                    }
+                                    if (cmdId.isNotEmpty()) {
+                                        processedCommandIds.add(cmdId)
+                                    }
+
                                     when (action) {
                                         "SPEAK" -> {
                                             val text = cmd.optString("text")
@@ -519,7 +547,8 @@ class MainActivity : AppCompatActivity() {
                                             while (isSpeaking && isActive) {
                                                 delay(200)
                                             }
-                                            speakToCaller(text, isFarewell)
+                                            // speakToCaller encodes cmdId; ackCommand will be called from onDone()
+                                            speakToCaller(text, isFarewell, cmdId)
                                         }
                                         "SEND_SMS" -> {
                                             val phone = cmd.optString("phone_number")
@@ -528,6 +557,9 @@ class MainActivity : AppCompatActivity() {
                                             if (phone.isNotEmpty() && message.isNotEmpty()) {
                                                 sendSms(phone, message, orderId.ifEmpty { null })
                                             }
+                                            if (cmdId.isNotEmpty()) {
+                                                apiClient.ackCommand(cmdId, "COMPLETED")
+                                            }
                                         }
                                         "HANGUP" -> {
                                             while (isSpeaking && isActive) {
@@ -535,10 +567,10 @@ class MainActivity : AppCompatActivity() {
                                             }
                                             delay(1500)
                                             callMonitor.endCall()
+                                            if (cmdId.isNotEmpty()) {
+                                                apiClient.ackCommand(cmdId, "COMPLETED")
+                                            }
                                         }
-                                    }
-                                    if (cmdId.isNotEmpty()) {
-                                        apiClient.ackCommand(cmdId)
                                     }
                                 }
                             }

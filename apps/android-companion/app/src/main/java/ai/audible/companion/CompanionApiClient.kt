@@ -36,7 +36,12 @@ class CompanionApiClient(private var baseUrl: String = "http://192.168.0.107:800
     }
 
     private fun postJson(endpoint: String, json: JSONObject): Result<String> {
-        val targets = listOf("$baseUrl$endpoint", "$fallbackUrl$endpoint")
+        val targets = listOf(
+            "$baseUrl$endpoint",
+            "$fallbackUrl$endpoint",
+            "http://127.0.0.1:8008/api/v1/companion$endpoint",
+            "http://192.168.0.107:8008/api/v1/companion$endpoint"
+        )
         var lastException: Exception? = null
 
         for (targetUrl in targets) {
@@ -108,7 +113,12 @@ class CompanionApiClient(private var baseUrl: String = "http://192.168.0.107:800
 
     suspend fun getPendingCommands(sessionId: String? = null): Result<List<JSONObject>> = withContext(Dispatchers.IO) {
         val query = if (!sessionId.isNullOrEmpty()) "?session_id=$sessionId" else ""
-        val targets = listOf("$baseUrl/supermarket/pending-commands$query", "$fallbackUrl/supermarket/pending-commands$query")
+        val targets = listOf(
+            "$baseUrl/supermarket/pending-commands$query",
+            "$fallbackUrl/supermarket/pending-commands$query",
+            "http://127.0.0.1:8008/api/v1/companion/supermarket/pending-commands$query",
+            "http://192.168.0.107:8008/api/v1/companion/supermarket/pending-commands$query"
+        )
         for (targetUrl in targets) {
             try {
                 val request = Request.Builder().url(targetUrl).get().build()
@@ -181,10 +191,11 @@ class CompanionApiClient(private var baseUrl: String = "http://192.168.0.107:800
         postJson("/diagnostics/audio-route", json)
     }
 
-    suspend fun ackCommand(commandId: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun ackCommand(commandId: String, status: String = "COMPLETED", error: String? = null): Result<String> = withContext(Dispatchers.IO) {
         val json = JSONObject().apply {
             put("command_id", commandId)
-            put("status", "COMPLETED")
+            put("status", status)
+            if (error != null) put("error", error)
         }
         postJson("/commands/ack", json)
     }

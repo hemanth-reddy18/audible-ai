@@ -80,3 +80,13 @@ local.properties
 # Machine Learning Models (>100MB exceeds GitHub limits)
 models/
 *.onnx
+
+# Audio files and recordings
+*.wav
+*.pcm
+*.mp3
+
+# Scratch testing directory
+scratch/
+
+

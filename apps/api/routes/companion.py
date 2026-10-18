@@ -59,6 +59,7 @@ class CommandAck(BaseModel):
     command_id: str
     session_id: Optional[str] = None
     status: str = "COMPLETED"
+    error: Optional[str] = None
 
 
 class SupermarketChatRequest(BaseModel):
@@ -134,8 +135,6 @@ async def pair_companion_device(device: CompanionDevice):
     }
 
 
-_handled_call_sessions: set = set()
-
 @router.post("/call-event")
 async def report_call_event(event: CallEvent):
     """Receive call state change events from the Android Telecom receiver."""
@@ -156,12 +155,12 @@ async def report_call_event(event: CallEvent):
     if event.state in ["OFFHOOK", "OFFHOOK_AUTO_ANSWERED"]:
         session_id = event.call_id or f"call_{int(datetime.utcnow().timestamp())}"
         
-        # ENFORCE EXACTLY ONE GREETING PER CALL SESSION
-        if session_id in _handled_call_sessions:
+        # ENFORCE EXACTLY ONE GREETING PER CALL SESSION AT MANAGER LEVEL
+        if not session_manager.should_greet(session_id):
             logger.info(f"[Supermarket Session] Call session {session_id} already greeted. Skipping duplicate greeting.")
             return {"status": "already_greeted", "session_id": session_id}
 
-        _handled_call_sessions.add(session_id)
+        session_manager.mark_greeted(session_id)
         caller_num = event.incoming_number or "Cellular Caller"
         order = session_manager.get_or_create_session(session_id, caller_num)
         order.state = ConversationState.ANSWERED
@@ -186,8 +185,11 @@ async def report_call_event(event: CallEvent):
         if active_order:
             active_order.state = ConversationState.COMPLETED
             logger.info(f"[Supermarket Session] Call Finished. Order summary: {active_order.get_order_summary()}")
-        if event.call_id and event.call_id in _handled_call_sessions:
-            _handled_call_sessions.remove(event.call_id)
+        
+        # Cancel any in-flight commands and clean up stale sessions
+        if event.call_id:
+            session_manager.cancel_session_commands(event.call_id)
+        session_manager.cleanup_stale_sessions()
 
     return {"status": "recorded", "state": event.state}
 
@@ -247,7 +249,7 @@ async def supermarket_chat_turn(req: SupermarketChatRequest):
 
 @router.get("/supermarket/pending-commands")
 async def get_pending_commands(session_id: Optional[str] = None):
-    """Poll for pending commands (SPEAK, HANGUP, SEND_SMS) by the companion app."""
+    """Poll for pending commands (SPEAK, HANGUP, SEND_SMS) by the companion app using atomic claiming."""
     target_id = session_id
     if not target_id:
         active = session_manager.get_active_session()
@@ -257,14 +259,14 @@ async def get_pending_commands(session_id: Optional[str] = None):
     if not target_id:
         return {"commands": []}
 
-    commands = session_manager.pop_commands(target_id)
+    commands = session_manager.claim_commands(target_id)
     return {"session_id": target_id, "commands": commands}
 
 
 @router.post("/commands/ack")
 async def acknowledge_command(ack: CommandAck):
-    """Acknowledge execution of a command from companion app to prevent duplicates."""
-    session_manager.ack_command(ack.command_id)
+    """Acknowledge execution of a command from companion app after real completion."""
+    session_manager.ack_command(ack.command_id, status=ack.status, error=ack.error)
     return {"status": "acknowledged", "command_id": ack.command_id}
 
 

@@ -253,6 +253,10 @@ async def test_initiate_call_posts_connect_with_stream_url():
             new_callable=AsyncMock,
             return_value=("https://api.example.test", "wss://api.example.test"),
         ),
+        patch(
+            "api.services.telephony.ws_auth.constants.TELEPHONY_WS_TOKEN_SECRET",
+            None,
+        ),
     ):
         result = await provider.initiate_call(
             to_number="+919999999999",

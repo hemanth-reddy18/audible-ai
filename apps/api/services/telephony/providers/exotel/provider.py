@@ -12,8 +12,9 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlsplit
 
+import asyncio
 import aiohttp
-from fastapi import HTTPException, Response
+from fastapi import HTTPException, Response, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from loguru import logger
 
@@ -389,14 +390,15 @@ class ExotelProvider(TelephonyProvider):
         from api.services.pipecat.run_pipeline import run_pipeline_telephony
 
         try:
-            first_msg = await websocket.receive_text()
+            first_msg = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
             msg = json.loads(first_msg)
             if msg.get("event") != "connected":
                 logger.error(f"Expected 'connected' event, got: {msg.get('event')}")
                 await websocket.close(code=4400, reason="Expected connected event")
                 return
 
-            start_msg = json.loads(await websocket.receive_text())
+            raw_start = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+            start_msg = json.loads(raw_start)
             if start_msg.get("event") != "start":
                 logger.error("Expected 'start' event second")
                 await websocket.close(code=4400, reason="Expected start event")
@@ -446,6 +448,16 @@ class ExotelProvider(TelephonyProvider):
                     "call_sid": str(call_sid),
                 },
             )
+        except WebSocketDisconnect:
+            logger.info(f"Exotel WebSocket disconnected cleanly for workflow_run {workflow_run_id}")
+            return
+        except asyncio.TimeoutError:
+            logger.warning(f"Exotel WebSocket handshake timed out for workflow_run {workflow_run_id}")
+            try:
+                await websocket.close(code=4408, reason="Handshake timeout")
+            except Exception:
+                pass
+            return
         except Exception as e:
             logger.error(f"Error in Exotel WebSocket handler: {e}")
             raise
